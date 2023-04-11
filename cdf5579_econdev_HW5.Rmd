@@ -1,0 +1,394 @@
+---
+title: "cdf5579_econdev_HW5"
+output:
+  pdf_document: default
+  html_document: default
+date: "2023-04-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+Carlos Figueroa
+cdf5579
+
+
+1 Randomization and Luck
+
+In class, I vaguely mentioned that you can get “unlucky” when you randomize, and I want to go over that
+a bit more. So let’s think of a really simple experiment: we are interested in understanding the effect of a placebo on height. Thankfully, Rafael Irizarry has provided some teaching datasets including one with heights (in inches). Enter the following code to load the dataset.
+
+install.packages("dslabs")
+library(dslabs)
+data("heights")
+df = as_tibble(heights)
+
+Here is conceptually what we are doing. We are going to randomize the students into treatment and
+control. We are then going to give the treatment students the placebo, and nothing to the control students.
+
+After a year, we measure their heights.
+
+1. First, let’s do one randomization. We want to randomize students into zero or one with probability .5, which we can do with the rbinom() command. Type
+
+df\$random <- rbinom(n = nrow(df), size = 1,prob = .5)
+
+to create a new column that’s random (0,1) with probability .5
+
+
+```{r}
+
+#install.packages("dslabs")
+library(dslabs)
+library(tibble)
+library(dplyr)  
+
+
+data("heights")
+
+df = as_tibble(heights)
+
+df$random <- rbinom(n = nrow(df), size = 1,prob = .5)
+
+
+```
+
+Now it’s a year later. Let’s see if the placebo worked. Run a regression predicting height using random
+using the lm() command.1
+
+What coefficient do you get for random? You don’t have to type out the whole thing, just a few digits.
+
+```{r}
+lmfit <- lm(height ~ random, df)
+
+summary(lmfit)
+```
+We get -0.2131 for the random coefficient
+
+2.Now do it again - overwrite the random column with the exact same df\$random <- rbinom(n = nrow(df), size = 1,prob = .5) command and run the exact same regression (so the thought experiment is we go back in time, re-randomize, and then see what happens a year later). What coefficient do you get for random?
+
+It’s different! Which seems bad - we would like our work to be reproducible. For instance, if you tell me that you randomized a group into treatment and control, I would like to be able to verify that you did the randomization correctly. It turns out that R doesn’t make a truly random number, but something that can be reproduced. The relevant thing here is called the “seed:” if you know the seed, then you can exactly get the same random values in a systematic way. Set the seed. You can pick whatever seed you want (google if you don’t know how to set a seed in R). We’re now going to want to randomize this many many times. The way to automate this is to start by defining a function. 
+
+Type:
+mySimulation <- function() {
+df$random <- rbinom(n = nrow(df), size = 1,prob = .5)
+lmfit <- summary(lm( height ~ random, df))$coefficients[2,1]
+return(lmfit)
+}
+
+
+What this does is calls a function mySimulation() which first creates the random column random, and
+then runs the regression, and then prints the coefficient on random.
+
+If you run mySimulation() over and over it will give you a different answer each time, but that’s good:
+once you set a seed, the path of estimated placebo coefficients will be the same, even if the specific value changes each iteration.
+```{r}
+
+df$random <- rbinom(n = nrow(df), size = 1,prob = .5)
+
+lmfit <- lm(height ~ random, df)
+
+summary(lmfit)
+
+summary(lm(height ~ random, df))$coefficients[2,1]
+
+```
+At random we got -0.4692879. Way different from before.
+
+So now what we’re going to do is run mysimulation 10000 times, in order to get a sense of the distribution of coefficients of the placebo on heights. This is called a Monte Carlo simulation, and its invention was crucial to the development of the atomic bomb, which is a little higher stakes than this problem set.
+
+A way to do this in R is with the sapply function. This is a helpful website walking through sapply for
+functions: https://r-coder.com/sapply-function-r/
+(If you want to use a different function that’s totally fine for me - there are lots of ways to do this in R)
+
+
+```{r}
+
+#lets do montecarlo simulation setting seed to zero
+set.seed(0)
+
+mySimulation <- function(foobar){
+df$random <- rbinom(n = nrow(df), size = 1,prob = .5)
+lmfit <- summary(lm(height ~ random, df))$coefficients[2,1]
+return(lmfit)
+}
+
+runs <- 10000
+
+#run the function 10000 times
+
+MCplacebo <- replicate(runs,mySimulation())
+
+
+```
+
+
+3. Create a vector with 10000 elements called MCplacebo in which each cell is one run of mySimulation().
+
+Write down the code you used in order to create MCplacebo Depending on how you do this question, it may be a really wide vector, which isn’t super convenient. t() will transpose it to a column, and then we can use as tibble() to make a dataframe.
+
+MCplacebo <- t(MCplacebo) %>%
+as_tibble()
+
+This code is to make it convenient, you have to do MCplacebo from scratch 
+
+```{r}
+
+MCplacebo <- as_tibble((MCplacebo))
+
+head(MCplacebo)
+
+#configure it to be a dataset and have the right dimensions
+
+```
+
+4. What’s the distribution of estimated coefficients? You could show this with a histogram (or a kernel
+density plot if you want to be fancy)
+
+```{r}
+
+colnames(MCplacebo) <- c('random')
+
+
+hist(MCplacebo$random, main = 'Distribution of random', xlab = 'Random val')
+
+```
+Kind of a normal distribution centerd around zero.
+
+5. Hopefully your distribution is centered around zero. But what do the tails (the upper and lower extremes) tell us about getting “unlucky?”
+
+It tells us that even though it is unlikely, it is still possible to get unlucky when you randomize, especially without a seed. So sometimes it might look like the treatment had an effect because we randomized, but in reality we just were unlucky and the randomization wasn't enough to measure the real treatment effect.
+
+6. Remember the thought experiment: we gave some students the placebo, then measured their heights a
+year later. Obviously the treatment didn’t affect their actual heights, although in your previous question hopefully you wrote about how sometimes it might have looked like it did. What additional data might you want to collect in order to minimize the chance of getting unlucky (This is also not something we’ve talked about in class, so describe your intuition).
+
+In order to minimize the chance of getting unlucky I will also collect the ages of the participants, together with the heights of their parents. If participants are above 23 years old, it is safer to say that the treatment did not work for them since they developed the height they had to develop already at that point of their lives. Randomizing withouth having age can lead us to having a kid that is just developing, and shifting our results, and that is one example of how we might get unlucky with data. Also, by having the height of their parents, we have a pretty good approximation of where the bounds of his height might be due to genetics. 
+
+2 Permanent Vs. Transitory Shocks
+This section is based on Christina Paxson’s paper Using Weather Variability to Estimate the Response
+of Savings to Transitory Income in Thailand (1992). Please familiarize yourself with the paper moving
+on. 
+
+There is a csv in the assignment folder on Brightspace, which you will want to load into R called
+paxson corrected, and an associated codebook (which tells you what each variable name means in english).
+
+
+7. Paxson (1992) attempts to estimate the marginal propensity to save out of transitory income. She states, “finding that these marginal propensities are high would indicate that farmers do use savings to smooth consumption.” Explain the intuition for why this is true Paxson only has data on total income (the variable inc). She wants to decompose it into a permanent income component (call it incperm) and a transitory income component (call it inctrans). For the following questions, you will need to replicate the results in Table 3 of Paxson (1992) and obtain estimates of incperm and inctrans
+
+
+
+```{r}
+
+df <- read.csv("paxson_corrected.csv")
+
+head(df)
+
+```
+
+```{r}
+
+df <- read.csv("paxson_corrected.csv")
+
+colnames(df)
+
+```
+
+
+8. Explain the logic of Table 3 - what exactly does Paxson do to get a “permanent” measure of income?
+Using the “dummies” package (that you will have to install and then load into your library), add to your dataframe dummy variables for region and year, you will need these for the regression.
+
+```{r}
+
+library(tidyverse)
+library(car) 
+library(broom) 
+
+#Dummies per unique years
+
+year.name <- paste('year', unique(df$year), sep='.')
+
+df <- df %>%
+  mutate(new = 1) %>%
+  spread(year, new, fill = 0, sep = '.')
+
+#Dummies per region
+region.name <- paste('region', unique(df$region), sep='.')
+
+df <- df %>%
+  mutate(new = 1) %>%
+  spread(region, new, fill = 0, sep = '.')
+
+#Now we check if there are here
+
+colnames(df)
+
+```
+
+Using the “lm” command, run table 3 column 1. The way I would do it would be to create a dataframe
+called irdat that contains only the relevant variables (so inc, the rainfall variables, the education variables, the fixed effects you just made, and so on). Then you can run the regression
+ir <- lm(inc ~ .,data=irdat) 
+
+```{r}
+
+#we list the variables we don't want in irdat
+
+ex_vars <- c("hid", "save3", "save1", "save2", "month", "cpi", "sd1", "sd2", "sd3", "sd4", "p6to11",
+             "p12to17", "p18to64", "p65" ,"year.76", "region.19")
+
+#we then exclude them and create the dataset used for column 1 in the paper
+
+irdat <- df[,!names(df) %in% ex_vars]
+
+ir <- summary(lm(inc ~ .,data=irdat))
+
+#lets print the summary
+ir
+
+```
+
+Using the coefficients estimated in the regression for Table 3, Column 1, Paxson constructs a predicted value for permanent income as follows. She multiples the permanent characteristics by their respective coefficients, and adds them up to form incperm (see equation 2 on page 17 of the paper.) Generate the variable incperm.
+
+Here’s how I would do this:
+
+You can store the summary() of a linear model, then use coef() to generate a table of coefficients. To get a specific coefficient, use coef(reg sum)[‘’x”,“Estimate”].
+Make a dataframe just of the permanent variables, call it permvars
+
+num_pv <- length(permvars)
+INCPERM <- 0
+for (i in 1:num_pv) {
+thisvar <- permvars[i]
+INCPERM <- INCPERM +
+coef(betas)[thisvar,"Estimate"]*irdat[,c(thisvar)]
+}
+
+
+I put INCPERM in caps because you will want to put it in a dataframe, and I’m not giving you hints
+about that since you should know how to do it. Eventually you are going to want to run a regression of
+savings on income, so be thoughtful about exactly how you do this, since you will also want to include the controls of Table 4 column 1
+
+
+```{r}
+
+#these variables aren't used to construct INCPERM since they aren't permanent per se
+#they were useful only for the modeling part
+
+ex_vars <- c("dev1","dev2","dev3","dev4","dvsq1","dvsq2","dvsq3","dvsq4")
+
+#lets extract transitory variables listed above
+irdat <- irdat[,!names(irdat) %in% ex_vars]
+
+#now we set the variables right in order to replicate
+permvars <- colnames(irdat)
+
+#take inc variable out
+permvars <- permvars[-1]
+
+num_pv <- length(permvars)
+INCPERM <- 0
+
+for (i in 1:num_pv) {
+thisvar <- permvars[i]
+INCPERM <- INCPERM + coef(ir)[thisvar,"Estimate"]*irdat[,c(thisvar)]
+}
+
+#INCPERM
+
+df <- df %>%
+  mutate(incperm =INCPERM)
+
+```
+
+9. What is the standard deviation of incperm? Also, explain what the function is doing, row by row.
+
+
+```{r}
+print(paste("Standard deviation of estimated permanent income:", sd(df$incperm))) # standard deviation
+
+```
+Explain what the function is doing, row by row: Basically, its multiplying the linear regression coefficient corresponding to the variable vector, to all of the rows in the specific vector. In this case, it is multiplying the vectors of permanent variables of the dataset by their corresponding coefficients from the model to approximate the percentage of income coming from these permanent variables, since the linear model is predicting the relation between all variables with income. So that is why it is an appropriate way of measuring permanent income per individual in the dataset.
+
+
+10. Do something similar to create a variable of transitory income, inctrans. What is the standard deviation of inctrans?
+
+
+```{r}
+
+#only transitory variables
+in_vars <- c("dev1","dev2","dev3","dev4","dvsq1","dvsq2","dvsq3","dvsq4", "year.81", "year.86")
+
+#in this case we are not excluding but only including the list above
+rdat <- df[,names(df) %in% in_vars]
+
+#same procedure now
+inmvars <- colnames(rdat)
+
+num_pv <- length(inmvars)
+
+inctrans <- 0
+
+for (i in 1:num_pv) {
+thisvar <- inmvars[i]
+inctrans <- inctrans + coef(ir)[thisvar,"Estimate"]*rdat[,c(thisvar)]
+}
+
+
+df <- df %>%
+  mutate(inctrans =inctrans)
+
+print(paste("Standard deviation of estimated transient income:",sd(df$inctrans)))
+
+```
+
+11. Paxson also has a category called unexplained income, defined as inc – incperm – inctrans. Form this variable and call it incunexp. What is the standard deviation of incunexp?
+
+
+```{r}
+df <- df %>%
+  mutate(incunexp = inc - incperm - inctrans)
+
+print(paste("Standard deviation of estimated transient income:",sd(df$incunexp)))
+
+```
+You will now run a regression to estimate the effect of income on savings. Use the variable save2 as your measure of savings. So the x variables are the three measures of income that you made, and the contols from footnote 2.
+
+12. What do you estimate for the marginal propensity to save out of each additional dollar of permanent
+income? What do you estimate for the marginal propensity to save out of each additional dollar of transitory income? Do the magnitudes align with the theory?
+
+
+```{r}
+
+#I manually copy pasted all the variables since they are less than before
+
+second.regression <- 'save2 ~ incperm+inctrans+incunexp+
+p0to5+p6to11+p12to17+p18to64+p65+
+sd1+sd2+sd3+sd4+year.81+year.86'
+
+results <- lm(as.formula(second.regression),df)
+
+summary(results)
+
+```
+What do you estimate for the marginal propensity to save out of each additional dollar of permanent
+income?
+
+Marginal propensity to save 0.4400 out of each additional dollar of permanent income
+
+What do you estimate for the marginal propensity to save out of each additional dollar of transitory income? 
+
+Marginal propensity to save 0.8039 out of each additional dollar of transitory income
+
+Do the magnitudes align with the theory?
+
+It appears that they are saving transitory income more than permanent income. In theory, they should be equal, since its source shouldn't matter in terms of smoothing consumption in general. So in theory, MPC_incperm - MPC_tranperm = 0. In order to do this a bit more formal, we can do a hypothesis test on this difference:
+
+```{r}
+
+linearHypothesis(results, 'inctrans-incperm = 0')
+```
+So given Pr(>F) = 0.02809, means we cannot reject the null hypothesis of PC_incperm - MPC_tranperm = 0, at 0.05 level of significance, but we can reject is at 0.01 level of significance. This might come from imperfections in the data, so more research is required in order to have more structure to say that theory of savings doesn't follows in these scenarios. But in this model, it is safe to say that households save more from transitory income than from permanent income.
+
+
