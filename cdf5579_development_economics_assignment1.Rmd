@@ -1,0 +1,314 @@
+---
+title: "Development Economics Assingment NYU Spring 2023"
+output:
+  pdf_document: default
+  html_document: default
+date: "2023-02-06"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+
+```{r}
+
+#install.packages("pwt10")
+
+library("pwt10")
+library(reshape2)
+library(effectsize)
+library(estimatr)
+library(dplyr)
+library("ggpubr")
+library(modelsummary)
+library(magrittr)
+library(readxl)
+library(tinytex)
+library(tibble)
+library(tidyverse)  # ggplot(), %>%, mutate(), and friends
+library(broom)  # Convert models to data frames
+library(rdrobust)  # For robust nonparametric regression discontinuity
+library(rddensity)  # For nonparametric regression discontinuity density tests
+
+```
+
+```{r}
+#load the data from the package
+data("pwt10.0")
+
+```
+
+1. What is the growth rate of gdp per worker? Show the derivation. Remember that, from the notation in
+Tuesday’s class, the growth rate of gdp per worker can be written as ˆy.
+
+
+We are going to have Y = AK^(alpha)(hL)^(1-alpha)
+
+Then we have to translate it to nominal rates, and take the growth rates with logs:
+
+g(y) = g(a) + (1-alpha)g(h) + (alpha)g(k) 
+
+(L is no longer here because we divided everything by L in order to get the terms in per capital)
+
+(where g(y) = ^y = y_hat and so on for the rest of the variables)
+
+Where alpha is assumed to be 1/3
+
+The parts of the dataset that we are going to take are: year, country, real gdp, capital, services, employment, and the human capital index.
+
+```{r}
+
+pwt = select(pwt10.0, 'year','country','rgdpna', 'rnna', 'emp','pop', 'hc')
+
+head(pwt,5)
+
+```
+
+
+2. At first glance head(pwt,5) might seem a bit concerning. Explain why it looks concerning, and in fact why it’s totally reasonable what’s going on.
+
+
+We’re not going to want to go back to 1950. Let’s do something a little more recent, like 1980. We can
+do this using filter()
+
+pwt_short = filter(pwt,year>1975)
+
+
+It looks concerning because a lot of data is missing for several years and several countries (we only have year and name of the country for the most part). This is because our observations are starting in 1950, and that might be to early for the worldwide standardization of these numbers being published. That is why we will need to filter the data a little bit so that we have data points with information on it.
+
+```{r}
+
+pwt_short = filter(pwt,year>1975)
+
+head(pwt_short,5)
+
+```
+
+
+3. Is head(pwt short,5) less concerning? So let’s instead only take the ones with no missing variables, using the very convenient drop na function
+
+Now we have a little more information, but we are still missing some data from employment and human capital, which are even more recent. In order to have them all, we might want to either pick on countries that were pioneers using these statistics (dropping nans), or filter year a little bit higher (up to 1995 probably). We are going to proceed with the first method, dropping nans.
+
+```{r}
+
+pwt_short = drop_na(filter(pwt,year>1975))
+
+head(pwt_short,5)
+
+```
+Now, we can see that we do not have Aruba as the first one because they never implemented HC information throughout the years, so now we only have countries that are compliant with all the fields.
+
+
+4. Write out the code that reports all of the countries (once)
+Now you get to pick a country. Whatever country you want!
+
+Now lets display all the different countries we have for our analysis
+
+```{r}
+
+head(distinct(pwt_short, country),5)
+print('Just printed the first 5 so its not a long list')
+
+```
+
+5. Which country did you pick? How can you make a new dataframe called “my country” that only contains
+the values for your country? Use our friend % > %, and go back to the optional assignment if you are having trouble remembering R logic for strings.
+
+
+Now we are going to calculate the compound annual growth rate for your country (using whatever the
+start year and end year is for your country).
+Some useful commands.
+
+First: I would create a dataframe with only two years in it (where 19xx and 20xx are the first and last
+years)
+
+my_country_short <- my_country %>% filter(year==19xx | year == 20xx)
+
+What does | stands for?
+
+Now we want to add some variables with the growth rates. I’ll show you how to do this for year, noting
+that we don’t actually care about the growth rate of years (since they grow at a rate of one a year) but it
+is useful for showing the code. I will use the functions lag (which is exactly what you might think it means)
+and mutate (which takes a data frame and appends it)
+
+
+| stands for OR as a logical operator
+
+And I am picking my country of origin: Venezuela (Republica Bolivaria de Venezuela).
+
+And the years I am picking the growth from are 1976 to 2001
+
+```{r}
+
+my_country = drop_na(filter(pwt_short, country == "Venezuela (Bolivarian Republic of)"))
+
+my_country_short <- my_country %>% filter(year==1976 | year == 2001)
+
+my_country_short
+
+```
+
+lag creates a lagged version of a time series, shifting the time base forward by a given number of observations. Lag does exactly the opposite, shifting the time base backwards by the given number of observations.
+
+```{r}
+
+my_country_short <- my_country_short %>% mutate(dif_years = year - lag(year),
+growth_years = ((year/ lag(year))^(1/dif_years))-1,growth_rgdpna = ((rgdpna/ lag(rgdpna))^(1/dif_years))-1, growth_rnna = ((rnna/ lag(rnna))^(1/dif_years))-1,growth_emp = ((emp/ lag(emp))^(1/dif_years))-1,growth_hc = ((hc/ lag(hc))^(1/dif_years))-1 )
+
+my_country_short
+
+```
+
+
+6. What are the compound annual growth rates for Y, K, and L?
+Now manipulate the data a bit more
+
+The annual growth rate for Y is 1.538719%
+
+The annual growth rate for K is 2.730126%
+
+The annual growth rate for L is 3.797529%
+
+
+7. What are the compound annual growth rates for y, k, and h? (the lower case letters mean in per capita terms dividing by L)
+
+Lets create my_country_short_per_capital
+
+
+```{r}
+
+my_country_short_per_capital <- my_country_short %>% mutate(gdp_per_capital = rgdpna/emp, capital_per_capital = rnna/emp, growth_gdp_per_capital = ((gdp_per_capital/ lag(gdp_per_capital))^(1/dif_years))-1, growth_capital_per_capital = ((capital_per_capital/ lag(capital_per_capital))^(1/dif_years))-1 )
+
+                                                
+my_country_short_per_capital                                 
+                                                    
+                                                    
+```
+
+The annual growth rate for y is -2.17617%
+
+The annual growth rate for k is -1.028352%
+
+The annual growth rate for h remains the same at 1.27386% (we calculated on last part)
+
+So even though K and Y are growing positively, they are not doing so per capital (by using employment as population rates). This is mostly because of a big jump in population as well, going from 3.7 million employed, to 9.4 in 25 years.
+
+We did it above using emp as population, but lets see how these changes if we use the actual population numbers (which weren't asked for in the doc assignment). But just for further analysis
+
+```{r}
+
+my_country_short_per_capital_pop <- my_country_short %>% mutate(gdp_per_capital = rgdpna/pop, capital_per_capital = rnna/pop, growth_gdp_per_capital = ((gdp_per_capital/ lag(gdp_per_capital))^(1/dif_years))-1, growth_capital_per_capital = ((capital_per_capital/ lag(capital_per_capital))^(1/dif_years))-1 )
+
+                                                
+my_country_short_per_capital_pop                               
+                                                    
+                                                    
+```
+
+then, in this case the growth rate of y is -0.8557552% while growth rate of k is 0.3075562%, so not that much change. So we can say that population grew a lot (1.8 times bigger), but employment grew to an even greater rate (2.56 times greater than 25 years ago). That is why in our last analysis, this growth rate was way less. Which is an interesting characteristic of developing economies.
+
+
+8.  Given your answer to (1), what must TFP growth in your country have been? You could do this problem
+in pencil and paper, but try to do it in R too (it is very fast at math like “2+2”)
+
+Total Factor Productivity term is At in Cobb Douglas.
+
+So the formula for the growth rate of At that we get from the derivation in part 1 is:
+
+g(y) = g(a) + (1-alpha)g(h) + (alpha)g(k) 
+
+g(a) = g(y) - (1-alpha)g(h) - (alpha)g(k) 
+
+The TFP growth in my country shall be:
+
+g(a) = g(y) - (1-1/3)g(h) - (1/3)g(k)  (using emp as denominator for per capital)
+
+g(a) = g(y) - (1-1/3)g(h) - (1/3)g(k)  (using pop as denominator for per capital)
+
+
+```{r}
+#create TFP variable calculation and then add it to the dataset
+
+growth_TFP <- my_country_short_per_capital[2, "growth_gdp_per_capital"]- (2/3)*my_country_short_per_capital[2, "growth_hc"] - my_country_short_per_capital[2, "growth_capital_per_capital"]
+
+print(paste0(growth_TFP*100, ' percent'))
+
+```
+and then using pop
+
+```{r}
+#create TFP variable calculation and then add it to the dataset
+
+growth_TFP <- my_country_short_per_capital_pop[2, "growth_gdp_per_capital"]- (2/3)*my_country_short_per_capital_pop[2, "growth_hc"] - my_country_short_per_capital_pop[2, "growth_capital_per_capital"]
+
+print(paste0(growth_TFP*100, ' percent'))
+
+```
+
+
+Now we’re going to go back to the all of the years in my country
+Create new variables for the growth rates of y, k, h, and TFP, calling them y growth,k growth,h growth,
+and TFP growth.
+
+
+then, we will apply this formula ton the growth rate of a in the dataset
+
+```{r}
+
+my_country_new <- drop_na(my_country %>% mutate(y = rgdpna/emp, k = rnna/emp,
+y_growth = ((y/ lag(y))^(1/1))-1, k_growth = ((k/ lag(k))^(1/1))-1, h_growth = ((hc/ lag(hc))^(1/1))-1, TFP_growth = y_growth - (2/3)*(h_growth) - (1/3)*(k_growth)))
+
+
+head(my_country_new, 10)
+
+
+```
+
+
+```{r}
+
+
+ggplot(data = my_country_new, mapping = aes(year)) +
+geom_line(aes(y = y_growth, color = "y_growth")) +
+geom_line(aes(y = k_growth, color = "k_growth"))+
+geom_line(aes(y = h_growth, color = "h_growth")) +
+geom_line(aes(y = TFP_growth, color = "TFP_growth"))
+
+
+```
+
+
+9. Plot the relationship between year and all of the growth rates. I already gave you most of the code, but I want you to make two change to the default ggplot choices. First, axis and legend names should never ever be variable names (unless the variable name is plain english like “year”). Make the names reflect the data. Second, make it so that the graph is legible when printed ( I would suggest changing two things: first I would pick a different theme, getting rid of the gray background, and then I would figure out how to make the scale colors gray)
+
+
+```{r}
+#make some changes to the graph 
+
+
+ggplot(data = my_country_new, mapping = aes(year)) +
+geom_line(aes(y = y_growth, color = "Real GDP per capita")) +
+geom_line(aes(y = k_growth, color = "Capital Stock per capita"))+
+geom_line(aes(y = h_growth, color = "Human capital Index")) +
+geom_line(aes(y = TFP_growth, color = "TFP")) +xlab("Years") + ylab("Percent changes")+ theme_bw() +  guides(color = guide_legend(title = "Growth rates displayed"))+labs(title = "Per capital growth rates of Venezuela",subtitle = "where TFP = g(y) - (2/3)g(h) - (1/3)g(k)",caption = "Data source: Penn tables (1976-2019)") 
+
+```
+```
+
+
+10. Briefly describe the growth experience of the country you have selected. Which factor was the most
+important driver of growth? Was growth relatively constant over the period, or did it vary substantially?
+
+Growth variated substantially for the country I choose. It was volatile but still in good levels before 2010. After that, political turmoil together with many other factors conducted GDP down, going down even further year by year afterwards (we can see this by the growth rate being increasingly negative as time goes by, i.e negatively steeper). TFP follows real GDP per capita rather closely due to the constantness of capital stock and human capital index, which did not vary a lot through the years. We can also see that as real GDP started to go down in recent years, capital stock did not move (growth rate stagnated at 0). So TFP growth has been virtually in the same rate as real GDP per capita growth.
+
+Then, one could say that judging by the first half of the graph, capital stock was indeed an important driver of real gdp growth rates (capital stock being a leading indicator, and gdp a lagging indicator of growth). However, this is no longer true in the second part of the graph. Many papers have discussed about this, and one of the clearest conclusions is that after 2010, Venezuela has not been a reliable source in administrating clear accounts of capital stock (which should be in a negative rate by now, since gdp has been declining exponentially after 2010). 
+
+
+
+

@@ -1,0 +1,760 @@
+---
+title: "cdf5579_dev_econ_HW3"
+output:
+  pdf_document: default
+  html_document: default
+date: "2023-02-22"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+
+CARLOS FIGUEROA - CDF5579 - PROBLEM SET 3 - DEVELOPMENT ECONOMICS
+
+```{r}
+
+#remove.packages("vctrs")
+#install.packages("vctrs")
+
+#‘vctrs’
+
+```
+
+```{r}
+
+#install.packages("pwt10")
+
+library("pwt10")
+library(reshape2)
+library(effectsize)
+library(estimatr)
+library(dplyr)
+library("ggpubr")
+library(modelsummary)
+library(magrittr)
+library(readxl)
+library(tinytex)
+library(tibble)
+library(tidyverse)  # ggplot(), %>%, mutate(), and friends
+library(broom)  # Convert models to data frames
+library(rdrobust)  # For robust nonparametric regression discontinuity
+library(rddensity)  # For nonparametric regression discontinuity density tests
+
+```
+```{r}
+#install.packages("gridExtra")
+library("gridExtra")
+
+#install.packages("cowplot")
+#install.packages("rlang")
+library("cowplot")
+
+```
+
+1. How quickly will a country, growing at 2% a year, double its income? What about a country growing at
+4% per year? How would that compare with a country growing at alternating rates of 0% and 8% per year?
+(in other words, which country grew faster, a steady 4% per year, or the “unstable” growth country, after 20 years).
+Please include your R code in addition to your answers.1
+
+Starting from the compound interest formula, we have 
+
+A = p(1 + r/n) to the power of nt
+
+Then, taking logs and solving for t, as well as defining A = 1
+
+t = ln(WA)/ln(n x ln(1+r/n))
+
+Where W is the increase we will want to calculate, and n is the amount of compounts per year. 
+Then, n = A = 1, and W = 2 since we want t see when its income doubles.
+
+t = ln(2)/ln(1.02) which is roughtly 35 years.
+
+Additionally, a good linear approximation is to use the 69, 70 or 72 rule. The one we will use for this example will be 70 since it is the best approximation we can obtain out of the three. What we do is the 
+t = 70/percentage of growth
+
+t = 70/2 percent = 35 years
+
+Then, for the case of 4 percent annual growth, we will have
+
+t = ln(2)/ln(1.04) = 17.67 years
+
+or 
+
+t = 70/4 percent = 17.5 years
+
+```{r}
+print("for the country with 2 percent:")
+
+log(2)/log(1.02)
+
+print("for the country with 2 percent:")
+
+log(2)/log(1.04)
+
+```
+
+Now, for the case of a country growing at 8 percent and 0 percent interchangeably, such calculation would not be that simple. Both of our equations break drown with the 0 percent change. 
+
+Which country grew faster, a steady 4% per year, or the “unstable” growth country, after
+20 years. To solve this question, we will establish that in the spam of 20 years, the unstable country spend 10 years growing at 8 percent, and 10 years not growing at all. While the steady country grew 4 percent in those 20 years. Then, using the equations and assumptions we added before, we will have:
+
+
+(1 + 0.08/n) to the power of n x 10 and (1 + 0.04/n) to the power of n x 20 
+
+```{r}
+print("for the unsteady country:")
+
+(1 + 0.08)^10
+
+print("for the steady country:")
+
+(1 + 0.04)^20
+
+```
+
+Therefore, the country with the steady growth rate will be better off than the country with the unstable growth rates in 20 years, but only by a small fraction. 
+
+
+```{r}
+library("ggplot2")
+function1<- function(x){1.08 ^ x}
+function2<-function(x){1.04 ^ x}
+
+curve(function1,to = 21, from = 0, col = 1)
+curve(function2, to = 21, from = 0, col = 2, add = TRUE)
+abline(v = 10)
+abline(v = 20)
+
+abline(h = 2.19)
+
+```
+But as we can see in this graph, then again, the steady country is doing better off just by a little.
+
+
+2. Suppose a country’s per capita income is currently growing at 4% per year. Then it adds an additional percentage point to its population growth rate for the next twenty years, but overall income continues to grow at the same rate. How much poorer/richer would the country be at the end of twenty years (per capita)?
+
+You don’t need to solve it out - just show us the equation. But the equation should not include the
+number “4” - you can simplify this problem.
+
+
+By deriving the equations from class, we have that since growth rate of k is assumed to be zero, we will have that:
+
+g(y) = g(A) + n
+
+If a country's per capita income is growing at 4%: g(y), = 0.04 This means g(y) is also 0.04
+
+If there is an additional percentage point added to its population growth rate but overall income grows at the same rate, we can use g(y) = g(A) + n and see that gA would decrease one percentage point to make this relationship hold. 
+
+In other words, from the g(y) = g(A) relationship we can then see g(y) would be a percentage point lower, making the country poorer per capita. Then, if we  calculate how much poorer per capita after 20 years, we will use the following equation:
+
+y x (1 + g(y)(1)) to the power of 20 - y x (1 + g(y)(0)) to the power of 20
+
+As an example, we could have:
+
+growth = y x (1 + 0.02) to the power of 20 - y x (1 +0 .04) to the power of 20
+
+In conclusion, the country will be poorer with an additional percentage point to its population growth rate.
+
+Another iconic development article that we didn’t have time to discuss in class is Lucas, R. E. (1990).
+Why doesn’t capital flow from rich to poor countries?. The American Economic Review, 80(2), 92-96.2 The
+question that is raised in the paper is often called the “Lucas puzzle”. Briefly answer the following questions:
+
+
+3. What does the simple economic theory predict? Shortly explain this prediction in your own words.
+
+
+What we know by theory and analysis, is that if production per worker differs between two countries, it must be because they have different levels of capital per worker, meaning they are more effective in one country than the other in terms of production.
+
+Notwithstanding, given the Law of Diminishing Returns, this will also imply that the marginal product of capital is higher in the less productive (i.e., in the poorer) economy. In other words, there is more space to grow in less productive nations since an additional untio of capital will have a greater impact in production than in already very productive nations. 
+
+This will drive us to the theory prediction that Lucas mentions: if trade in capital good is free and competitive, new investment will occur only in the poorer economy, since there are no incentives to invest in a country where the marginal product of capital is potentially close to zero. And this prediction will continue to be true until capital-labor ratios, wages and capital returns, are equalized among nations.
+ 
+
+4. What counter example to the theory is given in the text? Can you think of a historical example for a
+time and place when the theory didn’t get it wrong?
+
+
+The first thing that he raises as a question is: is that prediction really the case? lets look at the case of US and India. Why are investments in the US still increasing in comparison to the investments made in India. This theory prediction will tell us that there is no point of investing in a high-productive country like the US, and that all investments should be going to developing nations, and India is a good case study because of its size and potential in terms of population. And there is a giantic gap in terms of investment between these countries.
+
+
+The same is true for many other countries: for instance, United States with Mexico, were trading barriers are practically zero since they are neighbor countries, but Mexico has not seen any substantial growth in investment, or at least not in the scales of magnitute predicted by theory.
+
+
+5. Explain the first candidate answer Lucas raises for the question. (Hint: “. . . each American or Canadian worker was estimated to be productive equivalent to about five Indians or Ghanians”). How does he refute this answer?
+
+
+The context that he is discussing about is that he mentions: "28 countries examined could attain, expressed as a fraction of U.S. income, if each country had  the same physical capital per worker endowment as did the United States. In that comparison each American or Canadian worker was estimated to be productive equivalent to about five Indians or Ghanians"
+
+What Lucas takes into consideration in that scenario is Krueger's estimated human capital differentials, and re-interprets the initial equations. Basically, what this entails is that there is a difference between per worker and per effective worker (marked by Krueger), which lowers the ratios mentioned before substantially, but not close to the ones we see in the data, which is close to zero.
+
+So even though this first candidate encompasses a important differentiation, it is still not able to fit the data properly, so he argues that the paradox still pretty much alive: "a factor of 5 difference in rates of return is still large enough to lead one to expect capital flows much larger than any- thing we observe"
+
+
+6. Choose another candidate answer from the next two in the text and briefly explain it, in your own words.
+
+One of the next and final proposals is adding human capital to production and making some handy assumption about what that rate might be worldwide.The assumption is that the total stock of human capital grows at the same rate, .009, as that part of the stock that is accumulated through formal schooling. Which, in order words is that we are not accounting for human capital, such as education and other things that are more advanced in big economies than in small ones.
+
+With this additional variable, and taking the Krueger estimates as well, will drive us to a rate of return ratio between India and the United States of about (3)1.55 -l = 1.04, way lower than before.
+ 
+However, as Lucas argues, these results are based on the cross-country comparison assumption that the external benefits of a country's stock of human capital accrue entirely to producers within that country. Therefore, we should not take them by face value, and provides the example of knowledge spillovers being troublesome for these relationship with stock of human capital to be true to our assumptions.
+
+
+7. After reading this paper and hopefully thinking about this puzzle a bit, give your opinion - why doesn’t capital flow from rich to poor countries?
+
+Even before reading this paper, my opinion was pretty similar to one of the conclusions that Lucas reaches in this paper: political issues that are not being accounted, and many many existing trading barriers for trade out there.
+
+Without having to rely in that many other assumptions about the economy to get a reasonable differential of capital PC in each country,for such a pattern to be a competitive equilibrium, it is evident that there must be an effective mechanism for enforcing international borrowing agreements. 
+
+Political risk is a common way to describe this kind of flaw in the capital markets. For instance, the fact that the US does not shift all its investments into India might be accompanied with political interests from the US. A good example of this is the tariffs imposed by the US in China, or many other countries that were prohibited to negotiate with the international community due to political ideologist and war threats, such as Venezuela or Afghanistan. Which is something really important to account for: these less developed countries that should be receiving investments, they are often the countries with most political instability and prone to rejection of US dogmas in terms of trade.
+
+
+8. In the first problem set, you looked at the growth rates for one country. Now I want you to use the data to make slightly more complicated graphs. Specifically, I want you to make a graph that looks like the one on slide 30 of the problem set, reproduced below.
+
+That is to say: a scatterplot for each time period and a best fit line, with labeled X and Y axis. Make
+one graph for GDP per Capita, just like the one above, and also make one for TFP (don’t use the PWT
+TFP measures, use the ones you calculated on the first problem set, but now calculate it for all countries.
+
+Since you didn’t start in 1960 for your problem set, your graphs don’t need to start in 1960 either. You don’t need to make exactly the same formatting choices for the graph - in fact you shouldn’t, since the one on the slides is hard to read in black and white.
+
+This question is left intentionally vague. You may find yourself with lots of options at various steps,
+where the options seem pretty similar. You should do whatever you think is reasonable, but please write
+out what the various choices you made along the way were. You do not need to include your code, just a
+words-based description (and then of course you should include the graphs).
+I am also intentionally not giving you instructions or hints for how to do this. There are lots of good
+resources online for ggplot2 help.
+
+
+Lets make them first GDP per capital, and then TFP
+
+```{r}
+
+pwt = select(pwt10.0, 'year','country','rgdpna', 'rnna', 'emp','pop', 'hc')
+
+pwt_short = drop_na(filter(pwt,year>1958))
+
+df <- drop_na(pwt_short %>% mutate(y = rgdpna/emp, k = rnna/emp,
+y_growth = y/lag(y) -1, log_y = log(y)/100 ,k_growth = ((k/ lag(k))^(1/1))-1, h_growth = ((hc/ lag(hc))^(1/1))-1, TFP_growth = y_growth - (2/3)*(h_growth) - (1/3)*(k_growth)))
+
+#----------------------------------------------------------------------------
+
+pwt_60 = filter(df,year>=1960 & year < 1970)
+
+pwt_60_plt <- merge(aggregate(pwt_60$log_y, list(pwt_60$country), FUN=first),aggregate(pwt_60$y_growth, list(pwt_60$country), FUN=mean),by="Group.1")
+
+colnames(pwt_60_plt) <- c("Country","initial_value_GDP","avg_GDP_growth")
+
+pwt_60_plt$initial_value_GDP <- pwt_60_plt$initial_value_GDP*100
+pwt_60_plt$avg_GDP_growth <- pwt_60_plt$avg_GDP_growth*100
+
+#----------------------------------------------------------------------------
+
+pwt_70 = filter(df,year>=1970 & year < 1980)
+
+pwt_70_plt <- merge(aggregate(pwt_70$log_y, list(pwt_70$country), FUN=first),aggregate(pwt_70$y_growth, list(pwt_70$country), FUN=mean),by="Group.1")
+
+colnames(pwt_70_plt) <- c("Country","initial_value_GDP","avg_GDP_growth")
+
+pwt_70_plt$initial_value_GDP <- pwt_70_plt$initial_value_GDP*100
+pwt_70_plt$avg_GDP_growth <- pwt_70_plt$avg_GDP_growth*100
+
+#----------------------------------------------------------------------------
+
+pwt_80 = filter(df,year>=1980 & year < 1990)
+
+pwt_80_plt <- merge(aggregate(pwt_80$log_y, list(pwt_80$country), FUN=first),aggregate(pwt_80$y_growth, list(pwt_80$country), FUN=mean),by="Group.1")
+
+colnames(pwt_80_plt) <- c("Country","initial_value_GDP","avg_GDP_growth")
+
+pwt_80_plt$initial_value_GDP <- pwt_80_plt$initial_value_GDP*100
+pwt_80_plt$avg_GDP_growth <- pwt_80_plt$avg_GDP_growth*100
+
+#----------------------------------------------------------------------------
+
+pwt_90= filter(df,year>=1990 & year < 2000)
+
+pwt_90_plt <- merge(aggregate(pwt_90$log_y, list(pwt_90$country), FUN=first),aggregate(pwt_90$y_growth, list(pwt_90$country), FUN=mean),by="Group.1")
+
+colnames(pwt_90_plt) <- c("Country","initial_value_GDP","avg_GDP_growth")
+
+pwt_90_plt$initial_value_GDP <- pwt_90_plt$initial_value_GDP*100
+pwt_90_plt$avg_GDP_growth <- pwt_90_plt$avg_GDP_growth*100
+
+#----------------------------------------------------------------------------
+
+pwt_2000 = filter(df,year>=2000 & year < 2010)
+
+pwt_2000_plt <- merge(aggregate(pwt_2000$log_y, list(pwt_2000$country), FUN=first),aggregate(pwt_2000$y_growth, list(pwt_2000$country), FUN=mean),by="Group.1")
+
+colnames(pwt_2000_plt) <- c("Country","initial_value_GDP","avg_GDP_growth")
+
+pwt_2000_plt$initial_value_GDP <- pwt_2000_plt$initial_value_GDP*100
+pwt_2000_plt$avg_GDP_growth <- pwt_2000_plt$avg_GDP_growth*100
+
+#----------------------------------------------------------------------------
+
+#no need for an upper bound of this
+pwt_2010 = filter(df,year>=2010)
+
+pwt_2010_plt <- merge(aggregate(pwt_2010$log_y, list(pwt_2010$country), FUN=first),aggregate(pwt_2010$y_growth, list(pwt_2010$country), FUN=mean),by="Group.1")
+
+colnames(pwt_2010_plt) <- c("Country","initial_value_GDP","avg_GDP_growth")
+
+pwt_2010_plt$initial_value_GDP <- pwt_2010_plt$initial_value_GDP*100
+pwt_2010_plt$avg_GDP_growth <- pwt_2010_plt$avg_GDP_growth*100
+
+#----------------------------------------------------------------------------
+
+head(pwt_60,10)
+```
+
+
+```{r}
+library(ggplot2)
+
+# Scatter plot
+sp <- ggplot(pwt_60_plt, aes(x = initial_value_GDP, y = avg_GDP_growth))+ 
+  geom_point(size=2.5) + xlim(6,13) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "1960") + theme(plot.title = element_text(hjust = 0.5)) + theme_classic()+ theme(plot.title = element_text(hjust = 0.5)) +geom_hline(yintercept=0,linetype=2)
+
+sp2 <- ggplot(pwt_70_plt, aes(x = initial_value_GDP, y = avg_GDP_growth))+ 
+  geom_point(size=2.5) + xlim(6,13) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "1970") + theme(plot.title = element_text(hjust = 0.5))+ theme_classic()+ theme(plot.title = element_text(hjust = 0.5))+geom_hline(yintercept=0,linetype=2)
+
+sp3 <- ggplot(pwt_80_plt, aes(x = initial_value_GDP, y = avg_GDP_growth))+ 
+  geom_point(size=2.5) + xlim(6,13) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "1980") + theme(plot.title = element_text(hjust = 0.5))+ theme_classic()+ theme(plot.title = element_text(hjust = 0.5))+geom_hline(yintercept=0,linetype=2)
+
+sp4 <- ggplot(pwt_90_plt, aes(x = initial_value_GDP, y = avg_GDP_growth))+ 
+  geom_point(size=2.5) + xlim(6,13) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "1990") + theme(plot.title = element_text(hjust = 0.5))+ theme_classic()+ theme(plot.title = element_text(hjust = 0.5))+ labs (caption = "Y axis = Avg Growth rate in GDP PC")+geom_hline(yintercept=0,linetype=2)
+
+sp5 <- ggplot(pwt_2000_plt, aes(x = initial_value_GDP, y = avg_GDP_growth))+ 
+  geom_point(size=2.5) + xlim(6,13) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "2000") + theme(plot.title = element_text(hjust = 0.5))+ theme_classic()+ theme(plot.title = element_text(hjust = 0.5))+ labs (caption = "  .")+geom_hline(yintercept=0,linetype=2)
+
+sp6 <- ggplot(pwt_2010_plt, aes(x = initial_value_GDP, y = avg_GDP_growth))+ 
+  geom_point(size=2.5) + xlim(6,13) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "2010") + theme(plot.title = element_text(hjust = 0.5))+ theme_classic()+ theme(plot.title = element_text(hjust = 0.5))+ labs (caption = "X axis = Log of GDP PC at the start of decade")+geom_hline(yintercept=0,linetype=2)
+
+print("Absolute convergence by decade?")
+
+plot_grid(sp, sp2,sp3,sp4,sp5,sp6, labels=c("","","","","",""), ncol = 3, nrow = 2)
+
+```
+
+
+
+
+Now TFP ------------------------------------------------------------------------------
+
+
+first, calculate TFP. We already have TFP growth but not TFP in order to take logs
+
+We will say that in per capital levels, TFP = 
+
+y = A time K to the power of alpha times h to the power of 1 - alpha
+
+A = Y / (K to the power of alpha times h to the power of 1 - alpha)
+
+```{r}
+
+pwt = select(pwt10.0, 'year','country','rgdpna', 'rnna', 'emp','pop', 'hc')
+
+pwt_short = drop_na(filter(pwt,year>1958))
+
+df <- drop_na(pwt_short %>% mutate(y = rgdpna/emp, k = rnna/emp,
+y_growth = ((y/ lag(y))^(1/1))-1, k_growth = ((k/ lag(k))^(1/1))-1, TFP = y/(k^(1/3)*hc^(2/3)),log_TFP = log(TFP)/100, testing_growth = ((TFP/ lag(TFP))^(1/1))-1 , h_growth = ((hc/ lag(hc))^(1/1))-1, TFP_growth = y_growth - (2/3)*(h_growth) - (1/3)*(k_growth)))
+
+head(df,10)
+
+```
+
+Ok so testing_growth is very similar to TFP_growth, so our TFP measurement is accurate, and we can take logs of it to plot it as we did with GDP.
+
+
+```{r}
+
+pwt = select(pwt10.0, 'year','country','rgdpna', 'rnna', 'emp','pop', 'hc')
+
+pwt_short = drop_na(filter(pwt,year>1958))
+
+df <- drop_na(pwt_short %>% mutate(y = rgdpna/emp, k = rnna/emp,
+y_growth = ((y/ lag(y))^(1/1))-1, k_growth = ((k/ lag(k))^(1/1))-1, TFP = y/(k^(1/3)*hc^(2/3)),log_TFP = log(TFP)/100, testing_growth = ((TFP/ lag(TFP))^(1/1))-1 , h_growth = ((hc/ lag(hc))^(1/1))-1, TFP_growth = y_growth - (2/3)*(h_growth) - (1/3)*(k_growth)))
+
+#----------------------------------------------------------------------------
+
+pwt_60 = filter(df,year>=1960 & year < 1970)
+
+pwt_60_plt <- merge(aggregate(pwt_60$log_TFP, list(pwt_60$country), FUN=first),aggregate(pwt_60$TFP_growth, list(pwt_60$country), FUN=mean),by="Group.1")
+
+colnames(pwt_60_plt) <- c("Country","initial_value_TFP","average_value_TFP")
+
+pwt_60_plt$initial_value_TFP <- pwt_60_plt$initial_value_TFP*100
+pwt_60_plt$average_value_TFP <- pwt_60_plt$average_value_TFP*100
+
+#----------------------------------------------------------------------------
+
+pwt_70 = filter(df,year>=1970 & year < 1980)
+
+pwt_70_plt <- merge(aggregate(pwt_70$log_TFP, list(pwt_70$country), FUN=first),aggregate(pwt_70$TFP_growth, list(pwt_70$country), FUN=mean),by="Group.1")
+
+colnames(pwt_70_plt) <- c("Country","initial_value_TFP","average_value_TFP")
+
+pwt_70_plt$initial_value_TFP <- pwt_70_plt$initial_value_TFP*100
+pwt_70_plt$average_value_TFP <- pwt_70_plt$average_value_TFP*100
+
+#----------------------------------------------------------------------------
+
+pwt_80 = filter(df,year>=1980 & year < 1990)
+
+pwt_80_plt <- merge(aggregate(pwt_80$log_TFP, list(pwt_80$country), FUN=first),aggregate(pwt_80$TFP_growth, list(pwt_80$country), FUN=mean),by="Group.1")
+
+colnames(pwt_80_plt) <- c("Country","initial_value_TFP","average_value_TFP")
+
+pwt_80_plt$initial_value_TFP <- pwt_80_plt$initial_value_TFP*100
+pwt_80_plt$average_value_TFP <- pwt_80_plt$average_value_TFP*100
+
+#----------------------------------------------------------------------------
+
+pwt_90= filter(df,year>=1990 & year < 2000)
+
+pwt_90_plt <- merge(aggregate(pwt_90$log_TFP, list(pwt_90$country), FUN=first),aggregate(pwt_90$TFP_growth, list(pwt_90$country), FUN=mean),by="Group.1")
+
+colnames(pwt_90_plt) <- c("Country","initial_value_TFP","average_value_TFP")
+
+pwt_90_plt$initial_value_TFP <- pwt_90_plt$initial_value_TFP*100
+pwt_90_plt$average_value_TFP <- pwt_90_plt$average_value_TFP*100
+
+#----------------------------------------------------------------------------
+
+pwt_2000 = filter(df,year>=2000 & year < 2010)
+
+pwt_2000_plt <- merge(aggregate(pwt_2000$log_TFP, list(pwt_2000$country), FUN=first),aggregate(pwt_2000$TFP_growth, list(pwt_2000$country), FUN=mean),by="Group.1")
+
+colnames(pwt_2000_plt) <- c("Country","initial_value_TFP","average_value_TFP")
+
+pwt_2000_plt$initial_value_TFP <- pwt_2000_plt$initial_value_TFP*100
+pwt_2000_plt$average_value_TFP <- pwt_2000_plt$average_value_TFP*100
+
+#----------------------------------------------------------------------------
+
+#no need for an upper bound of this
+pwt_2010 = filter(df,year>=2010)
+
+pwt_2010_plt <- merge(aggregate(pwt_2010$log_TFP, list(pwt_2010$country), FUN=first),aggregate(pwt_2010$TFP_growth, list(pwt_2010$country), FUN=mean),by="Group.1")
+
+colnames(pwt_2010_plt) <- c("Country","initial_value_TFP","average_value_TFP")
+
+pwt_2010_plt$initial_value_TFP <- pwt_2010_plt$initial_value_TFP*100
+pwt_2010_plt$average_value_TFP <- pwt_2010_plt$average_value_TFP*100
+
+#----------------------------------------------------------------------------
+
+head(pwt_60,10)
+
+```
+
+
+```{r}
+library(ggplot2)
+
+# Scatter plot
+sp <- ggplot(pwt_60_plt, aes(x = initial_value_TFP, y = average_value_TFP))+ 
+  geom_point(size=2.5) + xlim(4,8) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "1960") + theme(plot.title = element_text(hjust = 0.5))
+
+sp2 <- ggplot(pwt_70_plt, aes(x = initial_value_TFP, y = average_value_TFP))+ 
+  geom_point(size=2.5) + xlim(4,8) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "1970") + theme(plot.title = element_text(hjust = 0.5))
+
+sp3 <- ggplot(pwt_80_plt, aes(x = initial_value_TFP, y = average_value_TFP))+ 
+  geom_point(size=2.5) + xlim(4,8) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "1980") + theme(plot.title = element_text(hjust = 0.5))
+
+sp4 <- ggplot(pwt_90_plt, aes(x = initial_value_TFP, y = average_value_TFP))+ 
+  geom_point(size=2.5) + xlim(4,8) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "1990") + theme(plot.title = element_text(hjust = 0.5))+ labs (caption = "Y axis = Avg Growth rate in TFP PC")
+
+sp5 <- ggplot(pwt_2000_plt, aes(x = initial_value_TFP, y = average_value_TFP))+ 
+  geom_point(size=2.5) + xlim(4,8) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "2000") + theme(plot.title = element_text(hjust = 0.5)) + labs (caption = " . ")
+
+sp6 <- ggplot(pwt_2010_plt, aes(x = initial_value_TFP, y = average_value_TFP))+ 
+  geom_point(size=2.5) + xlim(4,8) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "2010") + theme(plot.title = element_text(hjust = 0.5))+ labs (caption = "X axis = Log of TFP PC at the start of decade")
+
+
+plot_grid(sp, sp2,sp3,sp4,sp5,sp6, labels=c("","","","","",""), ncol = 3, nrow = 2)
+
+```
+Same movement occurring!
+
+9. As we discussed in class, there are many different sources for per capita gdp. Another source of data is the World Development Indicators, also called the WDI. Plot the an equivalent of the decade-by-decade convergence pictures from the question above, but now for real gdp per capita from the WDI. Hopefully this is pretty easy, since your code should be straightforward to adapt to a new dataset. You should read question 11 before doing this question, since it will be more efficient to download more than out outcome at once.
+
+Lets first look at what we want
+```{r}
+
+#WDIsearch('gdp.*capita.*constant')
+
+
+#install.packages('WDI')
+library(WDI) 
+
+#WDIsearch('gdp.*capita')
+
+data = WDI(
+  country = "all",
+  indicator = "NY.GDP.PCAP.KD",
+  extra = FALSE,
+  cache = NULL,
+  latest = NULL,
+  language = "en")
+head(data,10)
+
+```
+
+
+```{r}
+
+#install.packages('WDI')
+library(WDI) 
+
+#WDIsearch('gdp')
+
+data = WDI(
+  country = "all",
+  indicator = "NY.GDP.PCAP.KD",
+  start = 1960,
+  end = 2020,
+  extra = FALSE,
+  language = "en")
+
+#NY.GDP.PCAP.PP.KD	
+#NY.GDP.PCAP.KD
+
+df <- drop_na(data %>% mutate(y_growth = ((NY.GDP.PCAP.KD/ lag(NY.GDP.PCAP.KD))^(1/1))-1, log_y = log(NY.GDP.PCAP.KD)/100))
+
+# calculating reverse
+rev_data_frame <- apply(df, 2, rev)
+ 
+# converting the result to dataframe
+df <- as.data.frame(rev_data_frame)
+
+#setting variables as numeric
+df <- transform(df,NY.GDP.PCAP.KD= as.numeric(NY.GDP.PCAP.KD))
+df <- transform(df,y_growth = as.numeric(y_growth))
+df <- transform(df,log_y = as.numeric(log_y))
+df <- transform(df,year = as.numeric(year))
+
+df <- subset(df, y_growth<2) 
+
+
+#----------------------------------------------------------------------------
+
+pwt_60 = filter(df,year>=1960 & year < 1970)
+
+pwt_60_plt <- merge(aggregate(pwt_60$log_y, list(pwt_60$country), FUN=first),aggregate(pwt_60$y_growth, list(pwt_60$country), FUN=mean),by="Group.1")
+
+colnames(pwt_60_plt) <- c("Country","initial_value_GDP","average_value_GDP")
+
+pwt_60_plt$initial_value_GDP <- pwt_60_plt$initial_value_GDP*100
+pwt_60_plt$average_value_GDP <- -pwt_60_plt$average_value_GDP*100
+
+#----------------------------------------------------------------------------
+
+pwt_70 = filter(df,year>=1970 & year < 1980)
+
+pwt_70_plt <- merge(aggregate(pwt_70$log_y, list(pwt_70$country), FUN=first),aggregate(pwt_70$y_growth, list(pwt_70$country), FUN=mean),by="Group.1")
+
+colnames(pwt_70_plt) <- c("Country","initial_value_GDP","average_value_GDP")
+
+pwt_70_plt$initial_value_GDP <- pwt_70_plt$initial_value_GDP*100
+pwt_70_plt$average_value_GDP <- -pwt_70_plt$average_value_GDP*100
+
+#----------------------------------------------------------------------------
+
+pwt_80 = filter(df,year>=1980 & year < 1990)
+
+pwt_80_plt <- merge(aggregate(pwt_80$log_y, list(pwt_80$country), FUN=first),aggregate(pwt_80$y_growth, list(pwt_80$country), FUN=mean),by="Group.1")
+
+colnames(pwt_80_plt) <- c("Country","initial_value_GDP","average_value_GDP")
+
+pwt_80_plt$initial_value_GDP <- pwt_80_plt$initial_value_GDP*100
+pwt_80_plt$average_value_GDP <- -pwt_80_plt$average_value_GDP*100
+
+#----------------------------------------------------------------------------
+
+pwt_90= filter(df,year>=1990 & year < 2000)
+
+pwt_90_plt <- merge(aggregate(pwt_90$log_y, list(pwt_90$country), FUN=first),aggregate(pwt_90$y_growth, list(pwt_90$country), FUN=mean),by="Group.1")
+
+colnames(pwt_90_plt) <- c("Country","initial_value_GDP","average_value_GDP")
+
+pwt_90_plt$initial_value_GDP <- pwt_90_plt$initial_value_GDP*100
+pwt_90_plt$average_value_GDP <- -pwt_90_plt$average_value_GDP*100
+
+#----------------------------------------------------------------------------
+
+pwt_2000 = filter(df,year>=2000 & year < 2010)
+
+pwt_2000_plt <- merge(aggregate(pwt_2000$log_y, list(pwt_2000$country), FUN=first),aggregate(pwt_2000$y_growth, list(pwt_2000$country), FUN=mean),by="Group.1")
+
+colnames(pwt_2000_plt) <- c("Country","initial_value_GDP","average_value_GDP")
+
+pwt_2000_plt$initial_value_GDP <- pwt_2000_plt$initial_value_GDP*100
+pwt_2000_plt$average_value_GDP <- -pwt_2000_plt$average_value_GDP*100
+
+#----------------------------------------------------------------------------
+
+#no need for an upper bound of this
+pwt_2010 = filter(df,year>=2010)
+
+pwt_2010_plt <- merge(aggregate(pwt_2010$log_y, list(pwt_2010$country), FUN=first),aggregate(pwt_2010$y_growth, list(pwt_2010$country), FUN=mean),by="Group.1")
+
+colnames(pwt_2010_plt) <- c("Country","initial_value_GDP","average_value_GDP")
+
+pwt_2010_plt$initial_value_GDP <- pwt_2010_plt$initial_value_GDP*100
+pwt_2010_plt$average_value_GDP <- -pwt_2010_plt$average_value_GDP*100
+
+#----------------------------------------------------------------------------
+
+head(pwt_60,10)
+head(pwt_60_plt,10)
+
+```
+
+```{r}
+library(ggplot2)
+
+# Scatter plot
+sp <- ggplot(pwt_60_plt, aes(x = initial_value_GDP, y = average_value_GDP))+ 
+  geom_point(size=2.5) + xlim(6,13) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "1960") + theme(plot.title = element_text(hjust = 0.5))
+
+sp2 <- ggplot(pwt_70_plt, aes(x = initial_value_GDP, y = average_value_GDP))+ 
+  geom_point(size=2.5) + xlim(6,13) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "1970") + theme(plot.title = element_text(hjust = 0.5))
+
+sp3 <- ggplot(pwt_80_plt, aes(x = initial_value_GDP, y = average_value_GDP))+ 
+  geom_point(size=2.5) + xlim(6,13) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "1980") + theme(plot.title = element_text(hjust = 0.5))
+
+sp4 <- ggplot(pwt_90_plt, aes(x = initial_value_GDP, y = average_value_GDP))+ 
+  geom_point(size=2.5) + xlim(6,13) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "1990") + theme(plot.title = element_text(hjust = 0.5)) + labs (caption = "Y axis = Avg Growth rate in GDP PC")
+
+sp5 <- ggplot(pwt_2000_plt, aes(x = initial_value_GDP, y = average_value_GDP))+ 
+  geom_point(size=2.5) + xlim(6,13) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "2000") + theme(plot.title = element_text(hjust = 0.5))
+
+sp6 <- ggplot(pwt_2010_plt, aes(x = initial_value_GDP, y = average_value_GDP))+ 
+  geom_point(size=2.5) + xlim(6,13) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "2010") + theme(plot.title = element_text(hjust = 0.5))+ labs (caption = "X axis = Log of GDP PC at the start of decade")
+
+
+plot_grid(sp, sp2,sp3,sp4,sp5,sp6, labels=c("","","","","",""), ncol = 3, nrow = 2)
+```
+
+
+
+10. There is a very famous view that there is a “middle income trap.” Does either dataset suggest that
+middle income countries are trapped?
+
+Looking for the definition of middle income trap, we have that this concept "captures a situation where a middle-income country can no longer compete internationally in standardized, labor-intensive goods because wages are relatively too high, but it also cannot compete in higher value-added activities on a broad enough scale because productivity is relatively too low"
+
+This is a famous concept in macroeconomics, since we have seen many examples of this: US switching to a service economy, and shipping labor intensive labor to places with lower wages. It is also a big concern, and we are still leaving through such changes. For instance, China 30 years ago had the biggest potential to manufacture goods with low wages, but ever since, we have been seeing wages going up, and China shifting away from being the producer of labor-intensive goods for the world.
+
+In terms of the graphs we are seeing, the middle income trap will fairly connect to a country with a log GDP PC at the beginning of each century around 8 to 9, together with a time-series that shows these middle income cloud of countries going from positive average GDP PC growth rate per decade, to negative ranges. As we can see from both datasets, it looks like the perimeter on negative average GDP PC growth rate per decade above the countries with a log GDP PC at the beginning of each century around 8 to 9 is growing as decades go by. So our graphs slightly show this effect being true. 
+
+However, every nation is undergoing different processes, and it could be that the points we are looking as new in that perimeter aren't the same middle income countries from the last decade, but new countries that were poor in the past decade, and are going through an either temporal or perpetual contraction (Venezuela could be a good example of this). So in order to look at this effect better, we will have to isolate data points, and think of what we want to see a little bit more throughout.
+ 
+
+11. The WDI has all sorts of interesting indicators about development beyond GDP. Pick one that you
+think is interesting, the main website is good for exploring which ones exist. Try to pick one that exists for lots of countries and for several decades. Make the convergence plot for this outcome too. What does the pattern look like?
+
+
+Now using a different real GDP per capital PPP metric: Same x and Y axis from previous analysis
+
+```{r}
+
+#install.packages('WDI')
+library(WDI) 
+
+#WDIsearch('gdp.*capita')
+
+
+data = WDI(
+  country = "all",
+  indicator = "NY.GDP.PCAP.PP.KD",
+  extra = FALSE,
+  cache = NULL,
+  latest = NULL,
+  language = "en")
+head(data,10)
+
+
+df <- drop_na(data %>% mutate(y_growth = ((NY.GDP.PCAP.PP.KD
+/ lag(NY.GDP.PCAP.PP.KD))^(1/1))-1, log_y = log(NY.GDP.PCAP.PP.KD)/100))
+
+# calculating reverse
+rev_data_frame <- apply(df, 2, rev)
+ 
+# converting the result to dataframe
+df <- as.data.frame(rev_data_frame)
+
+#setting variables as numeric
+df <- transform(df,NY.GDP.PCAP.PP.KD= as.numeric(NY.GDP.PCAP.PP.KD))
+df <- transform(df,y_growth = as.numeric(y_growth))
+df <- transform(df,log_y = as.numeric(log_y))
+df <- transform(df,year = as.numeric(year))
+
+#----------------------------------------------------------------------------
+
+pwt_90= filter(df,year>=1990 & year < 2000)
+
+pwt_90_plt <- merge(aggregate(pwt_90$log_y, list(pwt_90$country), FUN=first),aggregate(pwt_90$y_growth, list(pwt_90$country), FUN=mean),by="Group.1")
+
+colnames(pwt_90_plt) <- c("Country","initial_value_GDP","average_value_GDP")
+
+pwt_90_plt$initial_value_GDP <- pwt_90_plt$initial_value_GDP*100
+pwt_90_plt$average_value_GDP <- -pwt_90_plt$average_value_GDP*100
+
+#----------------------------------------------------------------------------
+
+pwt_2000 = filter(df,year>=2000 & year < 2010)
+
+pwt_2000_plt <- merge(aggregate(pwt_2000$log_y, list(pwt_2000$country), FUN=first),aggregate(pwt_2000$y_growth, list(pwt_2000$country), FUN=mean),by="Group.1")
+
+colnames(pwt_2000_plt) <- c("Country","initial_value_GDP","average_value_GDP")
+
+pwt_2000_plt$initial_value_GDP <- pwt_2000_plt$initial_value_GDP*100
+pwt_2000_plt$average_value_GDP <- -pwt_2000_plt$average_value_GDP*100
+
+#----------------------------------------------------------------------------
+
+#no need for an upper bound of this
+pwt_2010 = filter(df,year>=2010)
+
+pwt_2010_plt <- merge(aggregate(pwt_2010$log_y, list(pwt_2010$country), FUN=first),aggregate(pwt_2010$y_growth, list(pwt_2010$country), FUN=mean),by="Group.1")
+
+colnames(pwt_2010_plt) <- c("Country","initial_value_GDP","average_value_GDP")
+
+pwt_2010_plt$initial_value_GDP <- pwt_2010_plt$initial_value_GDP*100
+pwt_2010_plt$average_value_GDP <- -pwt_2010_plt$average_value_GDP*100
+
+#----------------------------------------------------------------------------
+
+head(pwt_2000,10)
+head(pwt_2000_plt,10)
+
+```
+
+
+
+
+```{r}
+library(ggplot2)
+
+
+sp4 <- ggplot(pwt_90_plt, aes(x = initial_value_GDP, y = average_value_GDP))+ 
+  geom_point(size=2.5) + xlim(6,13) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "1990") + theme(plot.title = element_text(hjust = 0.5))
+
+sp5 <- ggplot(pwt_2000_plt, aes(x = initial_value_GDP, y = average_value_GDP))+ 
+  geom_point(size=2.5) + xlim(6,13) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "2000") + theme(plot.title = element_text(hjust = 0.5))
+
+sp6 <- ggplot(pwt_2010_plt, aes(x = initial_value_GDP, y = average_value_GDP))+ 
+  geom_point(size=2.5) + xlim(6,13) + ylim(-10,10) + geom_smooth(method='lm', formula= y~x, se = FALSE) + labs(title = "2010") + theme(plot.title = element_text(hjust = 0.5))
+
+
+plot_grid(sp4,sp5,sp6, labels=c("","",""), ncol = 3, nrow = 1)
+```
+
+Convergence looks roughly the same

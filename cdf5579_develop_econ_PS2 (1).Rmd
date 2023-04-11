@@ -1,0 +1,360 @@
+---
+title: "cdf5579_develop_econ_PS2"
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+date: "2023-02-12"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+```
+
+```{r}
+
+library(reshape2)
+library(effectsize)
+library(estimatr)
+library(dplyr)
+library("ggpubr")
+library(modelsummary)
+library(magrittr)
+library(readxl)
+library(tinytex)
+library(tibble)
+library(tidyverse)  # ggplot(), %>%, mutate(), and friends
+library(broom)  # Convert models to data frames
+library(rdrobust)  # For robust nonparametric regression discontinuity
+library(rddensity)  # For nonparametric regression discontinuity density tests
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+Beginning of the homework--------------------------------------------------------------------------
+
+The island has two main sectors: agriculture and manufacturing.
+In agriculture, the production function is
+
+Y = AaT^alpha(La)^1−alpha (1)
+
+where where Aa is TFP in agriculture, T is land (Terrain), and La is labor in agriculture. The quantity
+of land is fixed, because we are assuming that there is no investment or savings for land.
+
+In manufacturing, the production function is
+
+Y = AmK^alpha(Lm)^1−alpha (2)
+
+where where A is TFP, K is capital, and Lm is labor in agriculture. The quantity of capital is fixed,
+because we are assuming that investment or savings for capital.
+
+
+1. The assumption that capital is fixed and unchanging is just to make this problem easy to solve, it’s not correct. In a few sentences, what do you think about the assumption that land is fixed?
+
+The reason why capital is not fixed is because of the re-introduction of earnings from a firm as a form of capital. Basically, all earnings from the firm could be allocated as investments for the same firm, coming in the form of capital: new machines, better infrastructure, etc. 
+
+Now, when talking about land being fixed, it follows a similar pattern to why capital is not fixed: earnings from farming/agriculture can be reinvested into the business as a form of new land (expansions). Then, with more land, production increases as well. Then, the assumption that land is fixed is equally incorrect, and just there to make our calculations easier.
+
+
+2.In manufacturing, workers get paid their marginal product. Derive the wage in manufacturing as a
+function of A,K,Lm, and α
+
+Given that we have:
+
+Y = A(m) . K^[alpha] . (L(m))^[1−alpha]
+
+Then, workers are going to get paid their marginal product of labor (MPL):
+
+MPL = w = (1-alpha) . A(m) . K^[alpha] . (L(m))^[alpha]
+
+Which is derived by taking the partial derivative in terms of labor.
+
+
+3. In agriculture, workers get paid their average product (this is the Lewis twist). Derive the wage in
+agriculture as a function of As,T,La, and α
+
+Given that we have:
+
+Y = A(a) . T^[alpha] . (L(a))^[1−alpha]
+
+Then, workers are going to get paid the average product of labor:
+
+w = {A(a) . T^[alpha] . (L(a))^[1−alpha]}/L(a)  
+
+
+w = A(a) T^alpha (L(a))^[−alpha]
+
+
+w = A(a) t^alpha where t = T/L(a), meaning land per worker.
+
+Which is derived by dividing production by labor.
+
+
+4. Workers getting paid their marginal product is pretty standard. But just to make sure we are on the
+same page, in a sentence or two, why does it make sense?
+
+Coming from the concept of marginal productivity of labor, it is generally defined as the change in output resulting from a unit or infinitesimal change in the quantity of that labor used, holding all other input usages in the production process constant. Therefore, workers getting paid their marginal product is standard in terms of them getting paid the additional benefit they bring to the production line. Moreover, since tasks vary in complexity, harder tasks will have a higher salary than others ( because they are essential and few people can do them) 
+
+Additionally, this also entails the idea of decreasing marginal returns of production, meaning that the more workers we add, the less the wage will be since output will slow its increase with fixed capital in presence.
+
+
+5. Workers getting paid their average product is more unusual. But Lewis wasn’t writing down this model
+for fun or for the love of math, he thought that it captured something true. So in a few sentences, why do you think that workers may get paid their average product?
+
+When talking about agriculture, it is harder to measure the impact of a worker in the land, than it is to measure the impact of a worker in a production line or a factory. Then, given that everyone performs a vital task for the production of the land, it is more common for them to divide production equally. That is why the wage being an average of product captures the problem of task differentiation in land production, and that is what Lewis was trying to capture. So it is indeed an unusual wage setting, but it captures the idea of how different agriculture production is to the factory's model. Additionally, since wages are the average of production, the more workers the lesser the wage, dropping by a higher rate than in w = MPL
+
+Taking it from his paper: "Therefore, due to the wage differential between the agricultural and manufacturing sectors, workers will tend to transition from the agricultural to the manufacturing sector over time to reap the reward of higher wages"
+
+
+6. In equilibrium, wages are equal in both sectors. Give a short intuitive explanation as to why.
+
+In equilibrium, there is no surplus of workers, therefore wages are going to be equal in both sectors. The explanation is that as wages in factory sector are higher than farming, workers are going to shift from farming to factories, and that is going to drive wages in factories down (diminishing marginal returns) and level up the wages in farming (less people to divide output by). Therefore, in equilibrium, they will have the same wage.
+
+
+
+First, let’s assume that T = K and Am = Aa
+7. Given that the wages are equal in both sectors, what is the relative share of employment in agriculture? That is, solve for La/Lm as a function of As,T & K, and α. As a hint: not all of these are going to show up in the solution
+
+
+So we have: 
+
+w = A(a) T^alpha (L(a))^[−alpha]  (for farm)
+
+w = (1-alpha) . A(m) . K^[alpha] . (L(m))^[-alpha] (for factory)
+
+Setting both equal, we have
+
+A(a) T^alpha (L(a))^[−alpha] = (1-alpha) . A(m) . K^[alpha] . (L(m))^[-alpha]
+
+Since T = K and Am = Aa, we clear the terms
+
+(L(a))^[−alpha] = (1-alpha) . (L(m))^[-alpha]
+
+(L(a))^[−alpha] / (L(m))^[-alpha] = (1-alpha)
+
+[(L(a)) / (L(m))]^[−alpha] = (1-alpha)
+
+[(L(a)) / (L(m))] = (1-alpha)^[1/−alpha]
+
+(L(a)) / (L(m)) = (1-alpha)^[1/−alpha]
+
+(L(a)) / (L(m)) = (1/(1-alpha))^[1/alpha]
+
+
+Now, continue to assume that T = K but don’t assume that Am = Aa
+
+
+
+8. Given that the wages are equal in both sectors, what is the relative share of employment in agriculture? That is, solve for La/Lm as a function of As,T & K, and α. As before, not all of these are going to show up in the solution
+
+Setting both equal, we have
+
+A(a) . T^alpha . (L(a))^[−alpha] = (1-alpha) . A(m) . K^[alpha] . (L(m))^[-alpha]
+
+Since T = K, we clear the terms
+
+A(a) . (L(a))^[−alpha] = (1-alpha) . (L(m))^[-alpha] . A(m)
+
+(L(a))^[−alpha] / (L(m))^[-alpha] = [(1-alpha) . A(m)] / A(a)
+
+[(L(a)) / (L(m))]^[−alpha] = [(1-alpha) . A(m)] / A(a)
+
+(L(a)) / (L(m)) = [A(a)/(1-alpha).(A(m))]^[1/alpha]
+
+
+Now comes the R part. As always, all graphs should be well-labeled, and if I were to print out your
+problem set on my cheap black & white laser printer, the graphs should be easy to read.
+
+
+-------------------------------------------------------------------------------------
+
+
+
+9. Make a graph where Aa/Am is the x-axis and La/Lm is the y-axis. That is to say, plot how the share of labor in agriculture evolves as manufacturing productivity increases. This is not technically difficult to do in R, but you may have to spend some time thinking about the right way to set it up.
+I very purposefully did not give you numbers to pick for As,Ls,T,K, and α. You should pick numbers for
+which your graph looks good and conveys the right pattern. You should stick to these values for the rest of the assignment.
+
+You should try to think through how you would do thi before you look at how I would go about it below
+First, you want to make a define a data.frame with one column, for Am that has a bunch of values. seq()
+is probbaly useful. 
+You get to pick the starting and ending values
+
+Now add a column for Aa that’s just equal to one.We did something similar on the last problem set if
+you don’t remember how to do it. We can do this step wince Aa/Am is what matters, so Aa can be constant. Since Am changes in each row so does the ratio. Do try to define values so that Am is sometimes above Aa and sometimes below.
+
+Now make additional columns for T, K, and L
+Now you are cooking with gas: For each row you have all of the values you need for the equation you
+solved for in (8). So you can solve for La/Lm, and then make a graph.
+
+So we made sure that we had 101 data points for each vector before putting it together in the dataset, and assumed alpha to be 1/3 as in the past assignment (which resambles the actual alpha in the American economy as well)
+
+For t and K, we say that k is higher than t (higher ceiling) and its growth rate is higher than the growth rate of land. However, as stated in the beginning of the exercise, these quantities are fixed, but not equal.
+
+
+```{r}
+
+#Principal variables
+
+A_a <- rep(1, 101)
+
+A_m <- seq(0.7, 1.7, by = 0.01) 
+
+#other variables 
+
+#we said that t and k are constant and equal, so lets just add them as ones
+
+t <- rep(5, 101)
+
+K <- rep(8, 101)
+
+L <- rep(400, 101)
+
+#ratios
+
+ratio1 <- A_a / A_m
+
+alpha = 1/3
+
+#(L(a)) / (L(m)) = [A(a)/(1-α).(A(m))]^[1/α]
+
+ratio2 <- (A_a / ((1-(alpha)) * (A_m))) ^(1/(alpha))
+
+#dataframe
+df <- data.frame(A_a, A_m, t, K, L,ratio1, ratio2)
+
+head(df, 5)
+
+tail(df, 5)
+```
+
+
+```{r}
+
+#now we plot ratio 1 (as x) and 2 (as y)
+
+#simple plotting
+#plot(df$ratio1, df$ratio2)
+
+
+#personalized plotting
+ggplot(data = df, mapping = aes(ratio1)) +
+geom_line(aes(y = ratio2), color = "red")+xlab("A(a)/A(m)") + ylab("L(a)/L(m)")+ theme_bw() +labs(title = "Ratio of TPF against labor between Agrarian and Industrial economies",subtitle = "(L(a)) / (L(m)) = [A(a)/(1-α).(A(m))]^[1/α], α = 1/3 and a= Agrarian, m= Industrial") 
+
+```
+
+
+10. Now make a different graph, which is similar except the y-axis is GDP (the sum of agricultural and
+manufacturing output) and the x-axis is still Aa/Am.
+
+You should try to think through how you would do this before you look at how I would go about it below
+To get total GDP, you first need to solve for La and Lm. This isn’t so bad: if you know the ratio and
+you’ve already defined a value of the total labor force, you can get each component. make columns for total labor in each sector.
+
+Now you can plug into the production functions (equations 1 and 2 above) to get a column for output in
+each sector, add them to get a column for total GDP
+
+We know that L = La + Lm and that La = ratio2 times Lm. Then, combining both equations, we have:
+
+ratio2.Lm + Lm = 300 then Lm = 300 / (ratio2 + 1)
+
+And then, La = ratio2 times Lm, or La = ratio2 * 300/(ratio2 + 1)
+
+
+```{r}
+
+lm <- L / (ratio2 + 1)
+
+la <- ratio2 * lm
+
+output_agriculture <- A_a * t *(la)^(1-alpha)
+  
+output_machinery <- A_m * K *(lm)^(1-alpha)
+
+total_output <- output_agriculture + output_machinery
+
+df2 <- data.frame(A_a, A_m, t, K, L, lm, la, ratio1, ratio2, output_agriculture, output_machinery,total_output)
+
+head(df2, 5)
+
+tail(df2, 5)
+
+
+```
+```{r}
+
+#now we plot ratio 1 (as x) and 2 (as y)
+
+#simple plotting
+#plot(df2$ratio1, df2$total_output)
+
+
+#personalized plotting
+ggplot(data = df2, mapping = aes(ratio1)) +
+geom_line(aes(y = total_output), color = "red")+xlab("A(a)/A(m)") + ylab("Total output")+ theme_bw() +labs(title = "Total output against labor ratio between Agrarian and Industrial economies",subtitle = "The lower the ratio (high A(m)) the higher the output, α = 1/3 and a= Agrarian, m= Industrial") 
+
+```
+
+
+11. The government is considering a policy that introduces a minimum wage in manufacturing, which is
+above the prevailing wage when Aa = Am (how much? to pick something that makes the graph look good).
+
+
+On the same graph, plot GDP as a function of Aa/Am with and without the minimum wage. Explain in a
+few sentences what is going on.
+
+You should try to think through how you would do this before you look at how I would go about it below.
+This question is pretty hard, though once you figure out the steps the coding isn’t too bad
+
+For any given Aa and Am, you know what the non-policy wage in manufacturing would be.
+And, with pencil and paper, you can figure out: if I tell you the wage in manufacturing, what is Lm?.
+
+So now make a column that is the max of the no-policy wage and the minimum wage. This is what
+the equilibrium wage in manufacturing is going to be with a minimum wage: if it isn’t binding then the
+equilibrium is the same as without a minimum wage.
+
+So now you can figure out Lm. Once you have that, you should be able to get GDP, using steps from
+the previous questions.
+
+Ok so given a wage, we can solve for lm by moving terms and having (((1-alpha) Am K^alpha)/Wage_give)^1/alpha, so that will also give us la as the ratio we found before.
+
+```{r}
+
+fixed_wage = 0.296 #this number can be found by calculating the wage when Am = Aa
+
+lm2 <- (((1-alpha) * A_m * K^(alpha))/fixed_wage)^(1/alpha)
+
+la2 <-lm2 * ratio2
+
+
+output_agriculture2 <- A_a * t *(la2)^(1-alpha)
+  
+output_machinery2 <- A_m * K *(lm2)^(1-alpha)
+
+total_output2 <- output_agriculture2 + output_machinery2
+
+
+df3 <- data.frame(A_a, A_m, t, K, L, lm, la, ratio1, ratio2, output_agriculture, output_machinery,total_output, lm2,la2,output_agriculture2, output_machinery2, total_output2)
+
+
+#personalized plotting
+ggplot(data = df3, mapping = aes(ratio1)) +
+geom_line(aes(y = total_output), color = "red") +
+geom_line(aes(y = total_output2), color = "blue")+xlab("A(a)/A(m)") + ylab("Total output")+ theme_bw() +labs(title = "Total output against labor ratio between Agrarian and Industrial economies",subtitle = "Blue is with the minimum wage policy, red is without, α = 1/3 and a= Agrarian, m= Industrial") 
+
+
+```
+Increases in the minimum wage may stimulate macroeconomic growth if productivity is shifted toward more highly-skilled sectors, possibly by inducing additional training for low-skilled workers. Therefore, a minimum wage increase will increase output only when A(m) is higher than A(a). Meaning that the policy will only be efficient if the machinery industry is more productive than the agricultural side.
+
+
+12. One last intuition question: In Lewis’ model, the sectors interact through prices: as there are fewer workers in agriculture, the price of food goes up. You do not have to do this formally, but explain your intution for how this would change the relationship between increases in manufacturing productivity and GDP growth. How would trade change this pattern?
+
+Basically, we are assuming that by increasing productivity in manufacturing, which at the same time increases GDP in a higher rate than by increasing productivity in agriculture, will increase the amount of dollars available for an economy. And with that amount of dollars, they will be able to trade with different countries, where the manufacturing sector is not as productive, thus a good part of their GDP still depends on farming, which is a good example of what happened with countries like the US in the XX century, trading with poor-developing economies. So, if it was a close economy, the price of food will go up and they will have to balance with the wages of manufacturing (then, GDP growth with high A(m) would not be dramatically different from the GDP growth with a high A(a)), but this is an unreal assumption to make in this developing model. And that is why trade is key in setting up the story that connects with development history of nations.
+
+
+
+
+
+
